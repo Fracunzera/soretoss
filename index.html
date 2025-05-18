@@ -111,58 +111,108 @@
   </div>
 
 <script>
-// ... tu script actual sin cambios, permanece igual
-</script>
-</body>
-</html>
+let participantes = [], datosSorteo = {};
 
-    function sortear() {
-      const resultado = document.getElementById("resultado");
-      const cantGanadores = parseInt(document.getElementById("cantGanadores").value);
-      const cantSuplentes = parseInt(document.getElementById("cantSuplentes").value);
+function sortear() {
+  const resultado = document.getElementById("resultado");
+  const cantGanadores = parseInt(document.getElementById("cantGanadores").value);
+  const cantSuplentes = parseInt(document.getElementById("cantSuplentes").value);
 
-      if (participantes.length < (cantGanadores + cantSuplentes)) {
-        alert("No hay suficientes participantes.");
+  if (participantes.length < (cantGanadores + cantSuplentes)) {
+    alert("No hay suficientes participantes.");
+    return;
+  }
+
+  const copia = [...participantes];
+  const ganadores = [], suplentes = [];
+
+  for (let i = 0; i < cantGanadores; i++) {
+    ganadores.push(copia.splice(Math.floor(Math.random() * copia.length), 1)[0]);
+  }
+  for (let i = 0; i < cantSuplentes; i++) {
+    suplentes.push(copia.splice(Math.floor(Math.random() * copia.length), 1)[0]);
+  }
+
+  const fecha = new Date().toLocaleString();
+  const hash = Math.random().toString(36).substring(2, 10);
+
+  datosSorteo = {
+    ganadores: ganadores.map(String),
+    suplentes: suplentes.map(String),
+    fecha,
+    hash,
+    total: participantes.length
+  };
+
+  resultado.innerHTML = `
+    <div>🏆 Ganadores:<br>${ganadores.join('<br>')}</div>
+    <div>🧍 Suplentes:<br>${suplentes.join('<br>')}</div>
+    <div style="font-size:14px;margin-top:10px;">📅 ${fecha}<br>🔒 Hash: ${hash}</div>
+  `;
+
+  lanzarFuegosArtificiales();
+
+  fetch('https://soretoss.vercel.app/api/save-hash', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(datosSorteo)
+  })
+    .then(res => res.ok ? console.log("Hash guardado correctamente.") : console.error("Error al guardar hash."))
+    .catch(err => console.error("Fallo de conexión con la API:", err));
+}
+
+function generarImagen() {
+  const div = document.getElementById("captura");
+  div.style.display = "block";
+  div.innerHTML = `
+    <h2 style='color:#e53935'>🎊 Resultado del Sorteo</h2>
+    <div style='margin:10px 0'><strong>🏆 Ganadores:</strong><br>${datosSorteo.ganadores?.join('<br>')}</div>
+    <div style='margin:10px 0'><strong>🧍 Suplentes:</strong><br>${datosSorteo.suplentes?.join('<br>')}</div>
+    <div style='margin-top:15px; font-size:14px;'>📅 ${datosSorteo.fecha}<br>🔒 Hash: ${datosSorteo.hash}<br>👥 Participantes: ${datosSorteo.total}</div>
+  `;
+
+  html2canvas(div).then(canvas => {
+    const link = document.createElement('a');
+    link.download = `sorteo_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.jpg`;
+    link.href = canvas.toDataURL("image/jpeg");
+    link.click();
+    div.style.display = "none";
+  });
+}
+
+function lanzarFuegosArtificiales() {
+  // efecto básico
+  alert("🎆 ¡Sorteo realizado con éxito!");
+}
+
+// Cargar participantes desde archivo Excel
+
+window.onload = () => {
+  document.getElementById('archivo').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, {type: 'array'});
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const raw = XLSX.utils.sheet_to_json(sheet, {header: 1});
+
+      const headers = raw[0].map(h => h.toLowerCase());
+      const idx = headers.findIndex(h => h.includes("username"));
+
+      if (idx === -1) {
+        alert("No se encontró la columna 'username' en el archivo.");
         return;
       }
 
-      const copia = [...participantes];
-      const ganadores = [];
-      const suplentes = [];
+      participantes = raw.slice(1).map(r => r[idx]).filter(Boolean);
 
-      for (let i = 0; i < cantGanadores; i++) {
-        ganadores.push(copia.splice(Math.floor(Math.random() * copia.length), 1)[0]);
-      }
-      for (let i = 0; i < cantSuplentes; i++) {
-        suplentes.push(copia.splice(Math.floor(Math.random() * copia.length), 1)[0]);
-      }
-
-      const fecha = new Date().toLocaleString();
-      const hash = Math.random().toString(36).substring(2, 10);
-
-      resultado.innerHTML = `
-        <div>🏆 Ganadores:<br>${ganadores.join('<br>')}</div>
-        <div>🧍 Suplentes:<br>${suplentes.join('<br>')}</div>
-        <div style="font-size:14px;margin-top:10px;">📅 ${fecha}<br>🔒 Hash: ${hash}</div>
-      `;
-
-      lanzarFuegosArtificiales();
-
-      fetch('https://soretoss.vercel.app/api/save-hash', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fecha,
-          hash,
-          ganadores,
-          suplentes,
-          total: participantes.length
-        })
-      })
-      .then(res => res.ok ? console.log("Hash guardado correctamente.") : console.error("Error al guardar hash."))
-      .catch(err => console.error("Fallo de conexión con la API:", err));
-    }
-  </script>
+      alert(`Se cargaron ${participantes.length} participantes.`);
+    };
+    reader.readAsArrayBuffer(file);
+  });
+};
+</script>
 </body>
 </html>
 
