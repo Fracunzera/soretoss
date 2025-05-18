@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <title>Sorteo de Comentarios Instagram</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <style>
     html, body {
       margin: 0;
@@ -12,7 +13,7 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 40px 20px;
+      padding: 20px;
       position: relative;
       overflow-x: hidden;
       min-height: 100vh;
@@ -26,12 +27,13 @@
     h1 {
       color: #2a4d69;
       z-index: 2;
+      text-align: center;
     }
     .card {
       background: white;
       border-radius: 16px;
       box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-      padding: 30px;
+      padding: 20px;
       width: 100%;
       max-width: 500px;
       text-align: center;
@@ -39,23 +41,26 @@
     }
     input[type="file"], input[type="number"] {
       margin: 10px 0;
+      width: 100%;
+      max-width: 100%;
     }
     button {
       background-color: #2a4d69;
       color: white;
-      padding: 12px 24px;
+      padding: 12px 20px;
       border: none;
       border-radius: 8px;
-      font-size: 18px;
+      font-size: 16px;
       cursor: pointer;
-      margin-top: 10px;
+      margin: 10px 0;
+      width: 100%;
     }
     button:hover {
       background-color: #1e3a52;
     }
     .resultado, .ruleta {
-      margin-top: 30px;
-      font-size: 22px;
+      margin-top: 20px;
+      font-size: 18px;
       font-weight: bold;
       min-height: 60px;
     }
@@ -73,6 +78,10 @@
       background: #fff8e1;
       border-left: 5px solid #ffc107;
       color: #ffc107;
+    }
+    #generarPublicacion {
+      margin-top: 10px;
+      background: #0066cc;
     }
     a {
       text-decoration: none;
@@ -101,13 +110,17 @@
       <input type="number" id="cantSuplentes" value="1" min="0">
     </div>
     <button onclick="sortear()">🎰 Realizar Sorteo</button>
+    <button id="generarPublicacion" onclick="generarPublicacion()">🧾 Generar Publicación</button>
 
     <div class="ruleta" id="ruleta">Esperando archivo...</div>
     <div class="resultado" id="resultado"></div>
+    <div id="captura" style="display:none; padding: 20px; background:white; margin-top:20px; border-radius: 12px; box-shadow: 0 0 10px #ccc; font-size: 16px; line-height: 1.5;"></div>
   </div>
 
   <script>
     let participantes = [];
+    let resultadoGlobal = "";
+    let datosSorteo = {};
 
     document.getElementById('archivo').addEventListener('change', function(e) {
       const file = e.target.files[0];
@@ -163,16 +176,43 @@
           suplentes.push(copia.splice(Math.floor(Math.random() * copia.length), 1)[0]);
         }
 
+        const fecha = new Date().toLocaleString();
+        const hash = Math.random().toString(36).substring(2, 10);
+
+        datosSorteo = { ganadores, suplentes, fecha, cantidad: participantes.length, hash };
+
         ruleta.innerHTML = "🎉 ¡Sorteo completado!";
         resultado.innerHTML = `
           <div class="titular">🏆 Titulares:<br>${ganadores.join("<br>")}</div>
           <div class="suplente">🧍 Suplentes:<br>${suplentes.join("<br>")}</div>
+          <div style="margin-top:10px;font-size:14px;">📅 ${fecha}<br>👥 Participantes: ${participantes.length}<br>🔒 Verificación: ${hash}</div>
         `;
+
         lanzarFuegosArtificiales();
       }, 4000);
     }
 
-    // Fuegos artificiales
+    function generarPublicacion() {
+      const div = document.getElementById("captura");
+      div.style.display = "block";
+      div.innerHTML = `
+        <strong>🎉 Resultado del Sorteo</strong><br>
+        🏆 Ganadores:<br>${datosSorteo.ganadores?.join("<br>") || "-"}<br><br>
+        🧍 Suplentes:<br>${datosSorteo.suplentes?.join("<br>") || "-"}<br><br>
+        📅 Fecha: ${datosSorteo.fecha || "-"}<br>
+        👥 Participantes: ${datosSorteo.cantidad || 0}<br>
+        🔒 Hash: ${datosSorteo.hash || "-"}
+      `;
+
+      html2canvas(div).then(canvas => {
+        const link = document.createElement('a');
+        link.download = `publicacion_sorteo_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.jpg`;
+        link.href = canvas.toDataURL("image/jpeg");
+        link.click();
+        div.style.display = "none";
+      });
+    }
+
     const canvas = document.getElementById("fuegos");
     const ctx = canvas.getContext("2d");
     canvas.width = window.innerWidth;
