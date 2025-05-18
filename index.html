@@ -1,3 +1,4 @@
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -19,17 +20,10 @@
       min-height: 100vh;
       color: #333;
     }
-    canvas {
-      position: fixed;
-      top: 0; left: 0;
-      z-index: 0;
-      pointer-events: none;
-    }
     h1 {
       color: #e53935;
-      z-index: 2;
-      text-align: center;
       font-size: 32px;
+      margin-bottom: 10px;
     }
     .card {
       background: #fff;
@@ -39,7 +33,6 @@
       width: 100%;
       max-width: 520px;
       text-align: center;
-      z-index: 2;
       border-top: 8px solid #e53935;
     }
     input[type="file"], input[type="number"] {
@@ -59,86 +52,31 @@
       cursor: pointer;
       margin: 10px 0;
       width: 100%;
-      transition: background 0.2s ease;
     }
     button:hover {
       background: #c62828;
     }
-    .resultado, .ruleta {
+    .resultado {
       margin-top: 20px;
       font-size: 18px;
       font-weight: bold;
-      min-height: 60px;
-    }
-    .titular {
-      background: #f8f9fa;
-      border-left: 5px solid #2e7d32;
-      color: #2e7d32;
-      padding: 12px;
-      border-radius: 6px;
-    }
-    .suplente {
-      background: #fff8e1;
-      border-left: 5px solid #fbc02d;
-      color: #f57f17;
-      padding: 12px;
-      border-radius: 6px;
-    }
-    #generarPublicacion {
-      background: #3949ab;
-    }
-    .extensiones {
-      font-size: 14px;
-      margin-top: 10px;
-      color: #444;
-    }
-    .extensiones a {
-      display: inline-block;
-      margin: 5px;
-      padding: 6px 10px;
-      background: #f4f4f4;
-      border-radius: 6px;
-      border: 1px solid #ddd;
-      text-decoration: none;
-      color: #e53935;
-    }
-    .extensiones a:hover {
-      background: #fff0f0;
     }
   </style>
 </head>
 <body>
-  <canvas id="fuegos"></canvas>
   <h1>🎉 Sorteo desde Instagram</h1>
   <div class="card">
-    <p>
-      1. Usá una de las siguientes extensiones para exportar comentarios de Instagram:
-    </p>
-    <div class="extensiones">
-      🔹 <a href="https://chromewebstore.google.com/detail/inscommentexport-descarga/bcbpabgcmmmofaddaliomhdpnbpnkhid?hl=es-419" target="_blank">InsCommentExport (para Chrome)</a><br>
-      🔹 <a href="https://addons.mozilla.org/en-US/firefox/addon/free-turbo-ig/" target="_blank">Free Turbo IG (para Firefox)</a>
-    </div>
-    <p>
-      2. Exportá los comentarios de tu post en Instagram<br>
-      3. Subí el archivo .csv o .xlsx para hacer el sorteo
-    </p>
-
     <input type="file" id="archivo" accept=".csv,.xlsx">
     <label for="cantGanadores">Cantidad de ganadores:</label>
     <input type="number" id="cantGanadores" value="1" min="1">
     <label for="cantSuplentes">Cantidad de suplentes:</label>
     <input type="number" id="cantSuplentes" value="1" min="0">
     <button onclick="sortear()">🎰 Realizar Sorteo</button>
-    <button id="generarPublicacion" onclick="generarPublicacion()">🧾 Generar Publicación</button>
-
-    <div class="ruleta" id="ruleta">Esperando archivo...</div>
     <div class="resultado" id="resultado"></div>
-    <div id="captura" style="display:none; padding: 20px; background: #fff; margin-top:20px; border-radius: 12px; box-shadow: 0 0 10px #ccc; font-size: 16px; line-height: 1.5;"></div>
   </div>
 
   <script>
     let participantes = [];
-    let datosSorteo = {};
 
     document.getElementById('archivo').addEventListener('change', function(e) {
       const file = e.target.files[0];
@@ -149,15 +87,9 @@
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const raw = XLSX.utils.sheet_to_json(sheet, {header: 1});
 
-        if (raw[0].length === 1 && raw[0][0].includes(",")) {
-          const rows = raw.map(r => r[0].split(","));
-          const idx = rows[0].findIndex(h => h.toLowerCase().includes("username"));
-          participantes = rows.slice(1).map(r => r[idx]).filter(Boolean);
-        } else {
-          const headers = raw[0].map(h => h.toLowerCase());
-          const idx = headers.findIndex(h => h.includes("username"));
-          participantes = raw.slice(1).map(r => r[idx]).filter(Boolean);
-        }
+        const headers = raw[0].map(h => h.toLowerCase());
+        const idx = headers.findIndex(h => h.includes("username"));
+        participantes = raw.slice(1).map(r => r[idx]).filter(Boolean);
 
         alert(`Se cargaron ${participantes.length} participantes.`);
       };
@@ -165,121 +97,49 @@
     });
 
     function sortear() {
-      const ruleta = document.getElementById("ruleta");
       const resultado = document.getElementById("resultado");
-      resultado.innerHTML = "";
-
       const cantGanadores = parseInt(document.getElementById("cantGanadores").value);
       const cantSuplentes = parseInt(document.getElementById("cantSuplentes").value);
-
       if (participantes.length < (cantGanadores + cantSuplentes)) {
         alert("No hay suficientes participantes.");
         return;
       }
 
-      let copia = [...participantes];
-      let ruletaInterval = setInterval(() => {
-        const nombre = copia[Math.floor(Math.random() * copia.length)];
-        ruleta.innerHTML = `🎲 Sorteando: <span style='color:#e53935'>${nombre}</span>`;
-      }, 100);
+      const copia = [...participantes];
+      const ganadores = [];
+      const suplentes = [];
 
-      setTimeout(() => {
-        clearInterval(ruletaInterval);
-        const ganadores = [];
-        for (let i = 0; i < cantGanadores; i++) {
-          ganadores.push(copia.splice(Math.floor(Math.random() * copia.length), 1)[0]);
-        }
-        const suplentes = [];
-        for (let i = 0; i < cantSuplentes; i++) {
-          suplentes.push(copia.splice(Math.floor(Math.random() * copia.length), 1)[0]);
-        }
+      for (let i = 0; i < cantGanadores; i++) {
+        ganadores.push(copia.splice(Math.floor(Math.random() * copia.length), 1)[0]);
+      }
+      for (let i = 0; i < cantSuplentes; i++) {
+        suplentes.push(copia.splice(Math.floor(Math.random() * copia.length), 1)[0]);
+      }
 
-        const fecha = new Date().toLocaleString();
-        const hash = Math.random().toString(36).substring(2, 10);
+      const fecha = new Date().toLocaleString();
+      const hash = Math.random().toString(36).substring(2, 10);
 
-        datosSorteo = { ganadores, suplentes, fecha, cantidad: participantes.length, hash };
-        ruleta.innerHTML = "🎉 ¡Sorteo completado!";
-        resultado.innerHTML = `
-          <div class="titular">🏆 Titulares:<br>${ganadores.join("<br>")}</div>
-          <div class="suplente">🧍 Suplentes:<br>${suplentes.join("<br>")}</div>
-          <div style="margin-top:10px;font-size:14px;">📅 ${fecha}<br>👥 Participantes: ${participantes.length}<br>🔒 Verificación: ${hash}</div>
-        `;
-        lanzarFuegosArtificiales();
-      }, 4000);
-    }
-
-    function generarPublicacion() {
-      const div = document.getElementById("captura");
-      div.style.display = "block";
-      div.innerHTML = `
-        <div style="font-size: 24px; font-weight: bold; color: #d63384; margin-bottom: 10px;">
-          🎉 Resultado del Sorteo
-        </div>
-        <div style="margin: 10px 0;">
-          <strong style="color:#6f42c1">🏆 Ganadores:</strong><br>
-          ${datosSorteo.ganadores?.join("<br>") || "-"}
-        </div>
-        <div style="margin: 10px 0;">
-          <strong style="color:#fd7e14">🧍 Suplentes:</strong><br>
-          ${datosSorteo.suplentes?.join("<br>") || "-"}
-        </div>
-        <div style="margin-top: 15px; font-size: 14px;">
-          📅 ${datosSorteo.fecha || "-"}<br>
-          👥 Participantes: ${datosSorteo.cantidad || 0}<br>
-          🔒 Hash: ${datosSorteo.hash || "-"}
-        </div>
+      resultado.innerHTML = `
+        <div>🏆 Ganadores:<br>${ganadores.join('<br>')}</div>
+        <div>🧍 Suplentes:<br>${suplentes.join('<br>')}</div>
+        <div style="font-size:14px;margin-top:10px;">📅 ${fecha}<br>🔒 Hash: ${hash}</div>
       `;
-      html2canvas(div).then(canvas => {
-        const link = document.createElement('a');
-        link.download = `sorteo_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.jpg`;
-        link.href = canvas.toDataURL("image/jpeg");
-        link.click();
-        div.style.display = "none";
+
+      // Guardar en el backend (Netlify/Vercel)
+            fetch('/api/save-hash', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fecha,
+          hash,
+          ganadores,
+          suplentes,
+          total: participantes.length
+        })
       });
     }
-
-    const canvas = document.getElementById("fuegos");
-    const ctx = canvas.getContext("2d");
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    const fuegos = [];
-
-    function crearFuego() {
-      const x = Math.random() * canvas.width;
-      const y = canvas.height;
-      const vy = Math.random() * -7 - 5;
-      const color = `hsl(${Math.random() * 360}, 100%, 60%)`;
-      fuegos.push({x, y, vy, color, alpha: 1});
-    }
-
-    function actualizarFuegos() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      fuegos.forEach((f, i) => {
-        f.y += f.vy;
-        f.alpha -= 0.02;
-        ctx.globalAlpha = f.alpha;
-        ctx.beginPath();
-        ctx.arc(f.x, f.y, 4, 0, Math.PI * 2);
-        ctx.fillStyle = f.color;
-        ctx.fill();
-        if (f.alpha <= 0) fuegos.splice(i, 1);
-      });
-      ctx.globalAlpha = 1;
-    }
-
-    function lanzarFuegosArtificiales() {
-      let count = 0;
-      const launch = setInterval(() => {
-        for (let i = 0; i < 10; i++) crearFuego();
-        if (++count > 15) clearInterval(launch);
-      }, 150);
-    }
-
-    function animar() {
-      requestAnimationFrame(animar);
-      actualizarFuegos();
-    }
-    animar();
   </script>
 </body>
+</html>
+
 </html>
