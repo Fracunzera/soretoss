@@ -89,6 +89,12 @@
 
         const headers = raw[0].map(h => h.toLowerCase());
         const idx = headers.findIndex(h => h.includes("username"));
+
+        if (idx === -1) {
+          alert("No se encontró la columna 'username' en el archivo.");
+          return;
+        }
+
         participantes = raw.slice(1).map(r => r[idx]).filter(Boolean);
 
         alert(`Se cargaron ${participantes.length} participantes.`);
@@ -126,7 +132,7 @@
       `;
 
       // Guardar en el backend (Netlify/Vercel)
-            fetch('/api/save-hash', {
+      fetch('https://soretoss.vercel.app/api/save-hash', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -136,10 +142,11 @@
           suplentes,
           total: participantes.length
         })
-      });
+      })
+      .then(res => res.ok ? console.log("Hash guardado correctamente.") : console.error("Error al guardar hash."))
+      .catch(err => console.error("Fallo de conexión con la API:", err));
     }
   </script>
 </body>
 </html>
 
-</html>
