@@ -205,7 +205,7 @@ window.onload = () => {
         return;
       }
 
-      participantes = raw.slice(1).map(r => r[idx]).filter(Boolean);
+      participantes = raw.slice(1).map(r => (typeof r[idx] === 'string' ? r[idx].split(',')[0].replace(/\"/g, '').trim() : r[idx])).filter(Boolean);
 
       alert(`Se cargaron ${participantes.length} participantes.`);
     };
