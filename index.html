@@ -5,7 +5,7 @@
   <title>Sorteo de Comentarios Instagram</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
-    body {
+    html, body {
       margin: 0;
       font-family: 'Segoe UI', sans-serif;
       background: linear-gradient(to bottom, #e9f0f7, #ffffff);
@@ -14,12 +14,14 @@
       align-items: center;
       padding: 40px 20px;
       position: relative;
-      overflow: hidden;
+      overflow-x: hidden;
+      min-height: 100vh;
     }
     canvas {
-      position: absolute;
+      position: fixed;
       top: 0; left: 0;
       z-index: 0;
+      pointer-events: none;
     }
     h1 {
       color: #2a4d69;
@@ -35,8 +37,8 @@
       text-align: center;
       z-index: 2;
     }
-    input[type="file"] {
-      margin: 20px 0;
+    input[type="file"], input[type="number"] {
+      margin: 10px 0;
     }
     button {
       background-color: #2a4d69;
@@ -46,6 +48,7 @@
       border-radius: 8px;
       font-size: 18px;
       cursor: pointer;
+      margin-top: 10px;
     }
     button:hover {
       background-color: #1e3a52;
@@ -89,6 +92,14 @@
     </p>
 
     <input type="file" id="archivo" accept=".csv,.xlsx" />
+    <div>
+      <label>Cantidad de ganadores: </label>
+      <input type="number" id="cantGanadores" value="1" min="1">
+    </div>
+    <div>
+      <label>Cantidad de suplentes: </label>
+      <input type="number" id="cantSuplentes" value="1" min="0">
+    </div>
     <button onclick="sortear()">🎰 Realizar Sorteo</button>
 
     <div class="ruleta" id="ruleta">Esperando archivo...</div>
@@ -107,7 +118,6 @@
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const raw = XLSX.utils.sheet_to_json(sheet, {header: 1});
 
-        // Si el primer valor parece una sola celda CSV pegada, separamos a mano
         if (raw[0].length === 1 && raw[0][0].includes(",")) {
           const rows = raw.map(r => r[0].split(","));
           const usernameIndex = rows[0].findIndex(h => h.toLowerCase().includes("username"));
@@ -128,8 +138,11 @@
       const resultado = document.getElementById("resultado");
       resultado.innerHTML = "";
 
-      if (participantes.length < 2) {
-        alert("Necesitás al menos 2 participantes.");
+      const cantGanadores = parseInt(document.getElementById("cantGanadores").value);
+      const cantSuplentes = parseInt(document.getElementById("cantSuplentes").value);
+
+      if (participantes.length < (cantGanadores + cantSuplentes)) {
+        alert("No hay suficientes participantes para esa cantidad de ganadores y suplentes.");
         return;
       }
 
@@ -141,12 +154,19 @@
 
       setTimeout(() => {
         clearInterval(ruletaInterval);
-        const titular = copia.splice(Math.floor(Math.random() * copia.length), 1)[0];
-        const suplente = copia[Math.floor(Math.random() * copia.length)];
+        const ganadores = [];
+        for (let i = 0; i < cantGanadores; i++) {
+          ganadores.push(copia.splice(Math.floor(Math.random() * copia.length), 1)[0]);
+        }
+        const suplentes = [];
+        for (let i = 0; i < cantSuplentes; i++) {
+          suplentes.push(copia.splice(Math.floor(Math.random() * copia.length), 1)[0]);
+        }
+
         ruleta.innerHTML = "🎉 ¡Sorteo completado!";
         resultado.innerHTML = `
-          <div class="titular">🏆 Titular: ${titular}</div>
-          <div class="suplente">🧍 Suplente: ${suplente}</div>
+          <div class="titular">🏆 Titulares:<br>${ganadores.join("<br>")}</div>
+          <div class="suplente">🧍 Suplentes:<br>${suplentes.join("<br>")}</div>
         `;
         lanzarFuegosArtificiales();
       }, 4000);
