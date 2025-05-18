@@ -1,19 +1,216 @@
-<div id="captura" style="display:none; padding: 20px; background: linear-gradient(135deg, #f9f9f9, #ffffff); margin-top:20px; border-radius: 16px; box-shadow: 0 0 12px rgba(0,0,0,0.1); font-size: 16px; line-height: 1.6; text-align: center; font-family: 'Segoe UI', sans-serif; color: #333;">
-  <div style="font-size: 24px; font-weight: bold; color: #d63384; margin-bottom: 10px;">
-    🎉 Resultado del Sorteo
-  </div>
-  <div style="margin: 10px 0;">
-    <strong style="color:#6f42c1">🏆 Ganadores:</strong><br>
-    <span id="imgGanadores" style="color:#000; font-weight: 500;"></span>
-  </div>
-  <div style="margin: 10px 0;">
-    <strong style="color:#fd7e14">🧍 Suplentes:</strong><br>
-    <span id="imgSuplentes" style="color:#000; font-weight: 500;"></span>
-  </div>
-  <div style="margin-top: 15px; font-size: 14px;">
-    📅 <span id="imgFecha"></span><br>
-    👥 Participantes: <span id="imgCantidad"></span><br>
-    🔒 Hash: <span id="imgHash"></span>
-  </div>
-</div>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Sorteo de Comentarios Instagram</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <style>
+    html, body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to bottom, #e9f0f7, #ffffff);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      position: relative;
+      overflow-x: hidden;
+      min-height: 100vh;
+    }
+    canvas {
+      position: fixed;
+      top: 0; left: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+    h1 {
+      color: #2a4d69;
+      z-index: 2;
+      text-align: center;
+    }
+    .card {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      padding: 20px;
+      width: 100%;
+      max-width: 500px;
+      text-align: center;
+      z-index: 2;
+    }
+    input[type="file"], input[type="number"] {
+      margin: 10px 0;
+      width: 100%;
+    }
+    button {
+      background-color: #2a4d69;
+      color: white;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      margin: 10px 0;
+      width: 100%;
+    }
+    button:hover {
+      background-color: #1e3a52;
+    }
+    .resultado, .ruleta {
+      margin-top: 20px;
+      font-size: 18px;
+      font-weight: bold;
+      min-height: 60px;
+    }
+    .titular {
+      background: #e6f9ee;
+      border-left: 5px solid #28a745;
+      color: #28a745;
+    }
+    .suplente {
+      background: #fff8e1;
+      border-left: 5px solid #ffc107;
+      color: #ffc107;
+    }
+    #generarPublicacion {
+      background: #0066cc;
+    }
+    .extensiones {
+      font-size: 14px;
+      margin-top: 10px;
+      color: #444;
+    }
+    .extensiones a {
+      display: inline-block;
+      margin: 5px;
+      padding: 6px 10px;
+      background: #f0f0f0;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="fuegos"></canvas>
+  <h1>🎉 Sorteo desde Instagram</h1>
+  <div class="card">
+    <p>1. Usá una de las siguientes extensiones para exportar comentarios de Instagram:</p>
+    <div class="extensiones">
+      🔹 <a href="https://chromewebstore.google.com/detail/inscommentexport-descarga/bcbpabgcmmmofaddaliomhdpnbpnkhid?hl=es-419" target="_blank">InsCommentExport (Chrome)</a><br>
+      🔹 <a href="https://addons.mozilla.org/en-US/firefox/addon/free-turbo-ig/" target="_blank">Free Turbo IG (Firefox)</a>
+    </div>
+    <p>2. Exportá los comentarios<br>3. Subí el archivo para hacer el sorteo:</p>
 
+    <input type="file" id="archivo" accept=".csv,.xlsx" />
+    <label>Cantidad de ganadores:</label>
+    <input type="number" id="cantGanadores" value="1" min="1">
+    <label>Cantidad de suplentes:</label>
+    <input type="number" id="cantSuplentes" value="1" min="0">
+    <button onclick="sortear()">🎰 Realizar Sorteo</button>
+    <button id="generarPublicacion" onclick="generarPublicacion()">🧾 Generar Publicación</button>
+
+    <div class="ruleta" id="ruleta">Esperando archivo...</div>
+    <div class="resultado" id="resultado"></div>
+    <div id="captura" style="display:none; padding: 20px; background: linear-gradient(135deg, #f9f9f9, #ffffff); margin-top:20px; border-radius: 16px; box-shadow: 0 0 12px rgba(0,0,0,0.1); font-size: 16px; line-height: 1.6; text-align: center; font-family: 'Segoe UI', sans-serif; color: #333;"></div>
+  </div>
+
+<script>
+  let participantes = [];
+  let datosSorteo = {};
+
+  document.getElementById('archivo').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, {type: 'array'});
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const raw = XLSX.utils.sheet_to_json(sheet, {header: 1});
+      if (raw[0].length === 1 && raw[0][0].includes(",")) {
+        const rows = raw.map(r => r[0].split(","));
+        const idx = rows[0].findIndex(h => h.toLowerCase().includes("username"));
+        participantes = rows.slice(1).map(r => r[idx]).filter(Boolean);
+      } else {
+        const headers = raw[0].map(h => h.toLowerCase());
+        const idx = headers.findIndex(h => h.includes("username"));
+        participantes = raw.slice(1).map(r => r[idx]).filter(Boolean);
+      }
+      alert(`Se cargaron ${participantes.length} participantes.`);
+    };
+    reader.readAsArrayBuffer(file);
+  });
+
+  function sortear() {
+    const ruleta = document.getElementById("ruleta");
+    const resultado = document.getElementById("resultado");
+    resultado.innerHTML = "";
+
+    const cantGanadores = parseInt(document.getElementById("cantGanadores").value);
+    const cantSuplentes = parseInt(document.getElementById("cantSuplentes").value);
+    if (participantes.length < (cantGanadores + cantSuplentes)) {
+      alert("No hay suficientes participantes.");
+      return;
+    }
+
+    let copia = [...participantes];
+    let ruletaInterval = setInterval(() => {
+      const nombre = copia[Math.floor(Math.random() * copia.length)];
+      ruleta.innerHTML = `🎲 Sorteando: <span style='color:#2a4d69'>${nombre}</span>`;
+    }, 100);
+
+    setTimeout(() => {
+      clearInterval(ruletaInterval);
+      const ganadores = [];
+      for (let i = 0; i < cantGanadores; i++) {
+        ganadores.push(copia.splice(Math.floor(Math.random() * copia.length), 1)[0]);
+      }
+      const suplentes = [];
+      for (let i = 0; i < cantSuplentes; i++) {
+        suplentes.push(copia.splice(Math.floor(Math.random() * copia.length), 1)[0]);
+      }
+
+      const fecha = new Date().toLocaleString();
+      const hash = Math.random().toString(36).substring(2, 10);
+
+      datosSorteo = { ganadores, suplentes, fecha, cantidad: participantes.length, hash };
+      ruleta.innerHTML = "🎉 ¡Sorteo completado!";
+      resultado.innerHTML = `
+        <div class="titular">🏆 Titulares:<br>${ganadores.join("<br>")}</div>
+        <div class="suplente">🧍 Suplentes:<br>${suplentes.join("<br>")}</div>
+        <div style="margin-top:10px;font-size:14px;">📅 ${fecha}<br>👥 Participantes: ${participantes.length}<br>🔒 Verificación: ${hash}</div>
+      `;
+    }, 4000);
+  }
+
+  function generarPublicacion() {
+    const div = document.getElementById("captura");
+    div.style.display = "block";
+    div.innerHTML = `
+      <div style="font-size: 24px; font-weight: bold; color: #d63384; margin-bottom: 10px;">
+        🎉 Resultado del Sorteo
+      </div>
+      <div style="margin: 10px 0;">
+        <strong style="color:#6f42c1">🏆 Ganadores:</strong><br>
+        ${datosSorteo.ganadores?.join("<br>") || "-"}
+      </div>
+      <div style="margin: 10px 0;">
+        <strong style="color:#fd7e14">🧍 Suplentes:</strong><br>
+        ${datosSorteo.suplentes?.join("<br>") || "-"}
+      </div>
+      <div style="margin-top: 15px; font-size: 14px;">
+        📅 ${datosSorteo.fecha || "-"}<br>
+        👥 Participantes: ${datosSorteo.cantidad || 0}<br>
+        🔒 Hash: ${datosSorteo.hash || "-"}
+      </div>
+    `;
+    html2canvas(div).then(canvas => {
+      const link = document.createElement('a');
+      link.download = `sorteo_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.jpg`;
+      link.href = canvas.toDataURL("image/jpeg");
+      link.click();
+      div.style.display = "none";
+    });
+  }
+</script>
+</body>
+</html>
